@@ -1,10 +1,31 @@
 import { PortfolioAsset } from '../types/portfolio';
 
+/**
+ * AI Chatbot Utility Functions
+ * 
+ * This module provides intelligent responses for the investment advisor chatbot.
+ * It analyzes portfolio data and generates contextual advice based on user queries.
+ * 
+ * Key Features:
+ * - Portfolio-aware responses with real data analysis
+ * - Fee optimization recommendations
+ * - Asset replacement suggestions
+ * - Long-term impact calculations
+ * - Broker comparison and advice
+ */
+
 interface AIResponse {
   content: string;
   suggestions?: string[];
 }
 
+/**
+ * Generates AI responses based on user messages and portfolio data
+ * 
+ * @param userMessage - The user's question or request
+ * @param portfolioData - Current portfolio data for analysis
+ * @returns Promise<AIResponse> - AI response with content and suggestions
+ */
 export const generateAIResponse = async (userMessage: string, portfolioData: PortfolioAsset[]): Promise<AIResponse> => {
   const message = userMessage.toLowerCase();
   
@@ -17,9 +38,11 @@ export const generateAIResponse = async (userMessage: string, portfolioData: Por
   let expensiveAssets: PortfolioAsset[] = [];
   
   if (hasPortfolio) {
+    // Calculate total portfolio value and costs
     totalValue = portfolioData.reduce((sum, asset) => sum + asset.amount, 0);
     totalCost = portfolioData.reduce((sum, asset) => sum + asset.estimatedCost, 0);
     
+    // Find highest cost asset and expensive assets
     portfolioData.forEach(asset => {
       if (asset.costPercent > highestCostPercent) {
         highestCostPercent = asset.costPercent;
@@ -44,7 +67,7 @@ export const generateAIResponse = async (userMessage: string, portfolioData: Por
       };
     }
 
-    const avgCostPercent = (totalCost / totalValue) * 100;
+    const avgCostPercent = totalValue > 0 ? (totalCost / totalValue) * 100 : 0;
     return {
       content: `Your portfolio analysis shows:\n\n💰 **Total annual fees**: €${totalCost.toFixed(2)}\n📊 **Average fee rate**: ${avgCostPercent.toFixed(2)}%\n⚠️ **Highest cost asset**: ${highestCostAsset} (${highestCostPercent.toFixed(2)}%)\n\n${avgCostPercent > 1 ? '🚨 Your fees are quite high! ' : avgCostPercent > 0.5 ? '⚡ There\'s room for optimization. ' : '✅ Your fees are reasonable. '}${expensiveAssets.length > 0 ? `Consider replacing ${expensiveAssets.length} high-cost assets.` : 'Focus on maintaining low costs.'}`,
       suggestions: [
@@ -52,6 +75,59 @@ export const generateAIResponse = async (userMessage: string, portfolioData: Por
         "Show me low-cost alternatives",
         "How much could I save?",
         "What's the impact over 20 years?"
+      ]
+    };
+  }
+
+  // Biggest cost concern questions
+  if (message.includes('biggest') && (message.includes('cost') || message.includes('concern') || message.includes('problem'))) {
+    if (!hasPortfolio) {
+      return {
+        content: "Upload your portfolio first so I can identify your biggest cost concerns. Common issues include:\n\n🔴 **High TER funds** (>1% annually)\n🔴 **Expensive brokers** with high FX markups\n🔴 **Frequent trading** generating fees\n🔴 **Platform fees** eating into returns",
+        suggestions: [
+          "What are typical fee ranges?",
+          "How to choose a low-cost broker?",
+          "Best practices for fee reduction"
+        ]
+      };
+    }
+
+    if (totalValue === 0 || totalCost === 0) {
+      return {
+        content: "I notice your portfolio data might not be fully processed yet. Please try refreshing the analysis or re-uploading your portfolio data.",
+        suggestions: [
+          "How to upload portfolio data?",
+          "What format should my CSV be?",
+          "Generate a sample portfolio"
+        ]
+      };
+    }
+
+    // Find the most expensive asset by absolute cost
+    const mostExpensiveAsset = portfolioData.reduce((max, asset) => 
+      asset.estimatedCost > max.estimatedCost ? asset : max
+    );
+
+    // Find broker with highest total fees
+    const brokerCosts = portfolioData.reduce((acc, asset) => {
+      if (!acc[asset.broker]) acc[asset.broker] = 0;
+      acc[asset.broker] += asset.estimatedCost;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const mostExpensiveBroker = Object.entries(brokerCosts).reduce((max, [broker, cost]) => 
+      cost > max[1] ? [broker, cost] : max
+    );
+
+    const avgCostPercent = (totalCost / totalValue) * 100;
+
+    return {
+      content: `🎯 **Your biggest cost concerns**:\n\n1️⃣ **Highest cost asset**: ${mostExpensiveAsset.asset}\n   • Annual cost: €${mostExpensiveAsset.estimatedCost.toFixed(2)}\n   • Cost rate: ${mostExpensiveAsset.costPercent.toFixed(2)}%\n\n2️⃣ **Most expensive broker**: ${mostExpensiveBroker[0]}\n   • Total annual fees: €${mostExpensiveBroker[1].toFixed(2)}\n\n📊 **Overall portfolio**: ${avgCostPercent.toFixed(2)}% annual fees\n\n${avgCostPercent > 1 ? '🚨 **Action needed**: Your fees are significantly above optimal levels!' : avgCostPercent > 0.5 ? '⚡ **Room for improvement**: Consider optimizing high-cost positions.' : '✅ **Well optimized**: Your fees are in a reasonable range.'}`,
+      suggestions: [
+        `Replace ${mostExpensiveAsset.asset}`,
+        "Show me broker alternatives",
+        "Calculate potential savings",
+        "Long-term impact analysis"
       ]
     };
   }
@@ -148,9 +224,8 @@ export const generateAIResponse = async (userMessage: string, portfolioData: Por
 
   // Long-term impact questions
   if (message.includes('long term') || message.includes('20 year') || message.includes('impact') || message.includes('compound')) {
-    const avgCostPercent = hasPortfolio ? (totalCost / totalValue) * 100 : 1.5;
+    const avgCostPercent = hasPortfolio && totalValue > 0 ? (totalCost / totalValue) * 100 : 1.5;
     const optimizedCost = 0.3;
-    const difference = avgCostPercent - optimizedCost;
     
     return {
       content: `📈 **Long-term fee impact** (€100k portfolio):\n\n**Current fees (${avgCostPercent.toFixed(1)}%)**:\n• 10 years: €${(100000 * Math.pow(1.07 - avgCostPercent/100, 10)).toFixed(0)}\n• 20 years: €${(100000 * Math.pow(1.07 - avgCostPercent/100, 20)).toFixed(0)}\n• 30 years: €${(100000 * Math.pow(1.07 - avgCostPercent/100, 30)).toFixed(0)}\n\n**Optimized fees (0.3%)**:\n• 30 years: €${(100000 * Math.pow(1.07 - 0.003, 30)).toFixed(0)}\n\n💰 **Difference**: €${(100000 * (Math.pow(1.07 - 0.003, 30) - Math.pow(1.07 - avgCostPercent/100, 30))).toFixed(0)} over 30 years!`,
@@ -179,7 +254,7 @@ export const generateAIResponse = async (userMessage: string, portfolioData: Por
   // Default response
   return {
     content: hasPortfolio 
-      ? `I can help you optimize your portfolio! Your current setup has ${portfolioData.length} assets with an average fee of ${((totalCost / totalValue) * 100).toFixed(2)}%. What specific aspect would you like to improve?`
+      ? `I can help you optimize your portfolio! Your current setup has ${portfolioData.length} assets with an average fee of ${totalValue > 0 ? ((totalCost / totalValue) * 100).toFixed(2) : '0.00'}%. What specific aspect would you like to improve?`
       : "I'm here to help you optimize your investments and reduce fees! Upload your portfolio for personalized advice, or ask me about general investment strategies.",
     suggestions: hasPortfolio ? [
       "Analyze my fees",
@@ -195,6 +270,12 @@ export const generateAIResponse = async (userMessage: string, portfolioData: Por
   };
 };
 
+/**
+ * Analyzes broker distribution and costs in the portfolio
+ * 
+ * @param portfolioData - Portfolio data to analyze
+ * @returns Object with broker analysis summary
+ */
 const analyzeBrokers = (portfolioData: PortfolioAsset[]): { summary: string } => {
   const brokerCosts = portfolioData.reduce((acc, asset) => {
     if (!acc[asset.broker]) {
