@@ -46,14 +46,25 @@ See business plan and slide deck for more.
 	•	Styled via Tailwind in index.css (if frontend used)
 	•	RAG-based AI module designed (GPT + retrieval), not yet deployed
 
+ ## How to Run Locally
+To run the ClearVest app locally, follow these steps:
+	1.	Clone the repository from GitHub and open the project folder.
+	2.	Make sure you have Node.js installed (version 18 or higher).
+	3.	Open your terminal, go to the project folder, and run npm install to install all necessary packages.
+	4.	After installation, run npm run dev to start the app.
+	5.	Open your browser and go to http://localhost:5173 to use the app.
+
+This launches the development version of ClearVest on your computer. 
+
+Lastly, if you do not want to go through this process, here is the link open to the public:
+https://dreamy-biscuit-325d3f.netlify.app/ 
+
+
 ## Team:
 Friso Sterken
 MSc Business Analytics, RSM
 Strategy, data modeling, and fintech MVP development
 
-Attached
-	•	src/ – cleaned code repository
-	•	Fintech_business_plan__assignment_1_.pdf
-	•	Slide_deck_final.pdf
+Attached in the repository: src/ – cleaned code repository
 
 _“People focus on returns. Smart investors focus on costs.”_
